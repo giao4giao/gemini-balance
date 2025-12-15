@@ -134,6 +134,9 @@ class Settings(BaseSettings):
     GITHUB_REPO_OWNER: str = "giao4giao"
     GITHUB_REPO_NAME: str = "gemini-balance"
 
+    # 更新通道
+    UPDATE_CHANNEL: str = "dev"  # stable | dev
+
     # 日志配置
     LOG_LEVEL: str = "INFO"
     ERROR_LOG_RECORD_REQUEST_BODY: bool = False
@@ -162,6 +165,12 @@ class Settings(BaseSettings):
         if not self.AUTH_TOKEN and self.ALLOWED_TOKENS:
             self.AUTH_TOKEN = self.ALLOWED_TOKENS[0]
 
+    @field_validator("UPDATE_CHANNEL")
+    def validate_update_channel(cls, v: str) -> str:
+        allowed = {"stable", "dev"}
+        if v not in allowed:
+            raise ValueError(f"UPDATE_CHANNEL must be one of {allowed}")
+        return v
 
 # 创建全局配置实例
 settings = Settings()

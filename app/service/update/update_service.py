@@ -39,7 +39,12 @@ async def check_for_updates() -> Tuple[bool, Optional[str], Optional[str]]:
         logger.warning("GitHub repository owner/name not configured in settings. Skipping update check.")
         return False, None, "Update check skipped: Repository not configured in settings."
 
-    github_api_url = f"https://api.github.com/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}/releases/latest"
+    channel = settings.UPDATE_CHANNEL
+
+    if channel == "stable":
+        github_api_url = f"https://api.github.com/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}/releases/latest"
+    else:
+        github_api_url = f"https://api.github.com/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}/releases"
     logger.debug(f"Checking for updates at URL: {github_api_url}")
 
     try:
@@ -51,16 +56,37 @@ async def check_for_updates() -> Tuple[bool, Optional[str], Optional[str]]:
             response = await client.get(github_api_url, headers=headers)
             response.raise_for_status()
 
-            latest_release = response.json()
-            latest_v_str = latest_release.get("tag_name")
+            # ===== stable 用户 =====
+            if channel == "stable":
+                latest_release = response.json()
+                latest_v_str = latest_release.get("tag_name")
 
-            if not latest_v_str:
-                logger.warning("在最新的 GitHub release 响应中找不到 'tag_name'。")
-                return False, None, "无法从 GitHub 解析最新版本。"
+                if not latest_v_str:
+                    logger.warning("在最新的 GitHub release 响应中找不到 'tag_name'。")
+                    return False, None, "无法从 GitHub 解析最新版本。"
 
-            if latest_v_str.startswith('v'):
-                latest_v_str = latest_v_str[1:]
+                if latest_v_str.startswith('v'):
+                    latest_v_str = latest_v_str[1:]
 
+            # ===== prerelease 用户 =====
+            else:
+                latest_prerelease = response.json()
+                prereleases = []
+                for r in latest_prerelease:
+                    if not r.get("prerelease"):
+                        continue
+                    tag = r.get("tag_name", "").lstrip("v")
+                    try:
+                        prereleases.append(version.parse(tag))
+                    except version.InvalidVersion:
+                        continue
+
+                if not prereleases:
+                    logger.info("未找到任何可用的预览版本。")
+                    return False, None, None
+
+                latest_version = max(prereleases)
+                latest_v_str = str(latest_version)
             logger.info(f"在 GitHub 上找到的最新版本: {latest_v_str}")
 
             # 比较版本
