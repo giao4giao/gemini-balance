@@ -131,7 +131,7 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Asia/Shanghai"  # 默认时区
 
     # github
-    GITHUB_REPO_OWNER: str = "snailyp"
+    GITHUB_REPO_OWNER: str = "giao4giao"
     GITHUB_REPO_NAME: str = "gemini-balance"
 
     # 日志配置
